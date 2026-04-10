@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InvenDB — Inventory Management System</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500&display=swap');
+
+  :root {
+    --bg: #0a0b0f;
+    --surface: #111318;
+    --surface2: #181b22;
+    --border: #1e2230;
+    --border2: #252a38;
+    --text: #e8eaf0;
+    --muted: #636880;
+    --dim: #3a3f55;
+    --red: #ff4560;
+    --red-dim: #1a0a0e;
+    --green: #00e5a0;
+    --green-dim: #001a12;
+    --blue: #4d8aff;
+    --blue-dim: #050f26;
+    --amber: #ffb830;
+    --amber-dim: #1a1000;
+    --purple: #9b6dff;
+    --purple-dim: #0f0820;
+    --mono: 'IBM Plex Mono', monospace;
+    --display: 'Syne', sans-serif;
+    --body: 'Inter', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--body);
+    font-size: 14px;
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  /* ── Header ── */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 100;
+  }
+
+  .logo {
+    font-family: var(--display);
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .logo-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); display: inline-block; box-shadow: 0 0 8px var(--green); }
+  .logo span { color: var(--muted); font-weight: 400; font-size: 13px; font-family: var(--mono); }
+
+  .header-status { display: flex; gap: 16px; align-items: center; }
+  .status-pill {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 12px;
+    border: 1px solid;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .status-pill::before { content: ''; width: 5px; height: 5px; border-radius: 50%; display: inline-block; }
+  .pill-r { color: var(--red);    border-color: var(--red);    background: var(--red-dim);    }
+  .pill-r::before { background: var(--red); box-shadow: 0 0 4px var(--red); }
+  .pill-g { color: var(--green);  border-color: var(--green);  background: var(--green-dim);  }
+  .pill-g::before { background: var(--green); box-shadow: 0 0 4px var(--green); }
+  .pill-b { color: var(--blue);   border-color: var(--blue);   background: var(--blue-dim);   }
+  .pill-b::before { background: var(--blue); box-shadow: 0 0 4px var(--blue); }
+
+  /* ── Tabs ── */
+  .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); padding: 0 24px; }
+  .tab {
+    padding: 12px 20px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--text); border-bottom-color: currentColor; }
+  .tab[data-color="red"].active { color: var(--red); }
+  .tab[data-color="green"].active { color: var(--green); }
+  .tab[data-color="blue"].active { color: var(--blue); }
+  .tab-icon { font-size: 14px; }
+
+  /* ── Layout ── */
+  .layout { display: grid; grid-template-columns: 280px 1fr; height: calc(100vh - 57px - 44px); }
+  .sidebar { border-right: 1px solid var(--border); overflow-y: auto; padding: 16px 0; }
+  .main { overflow-y: auto; padding: 24px; }
+
+  /* ── Panels ── */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* ── Sidebar sections ── */
+  .sidebar-section { padding: 0 16px; margin-bottom: 24px; }
+  .sidebar-label { font-family: var(--mono); font-size: 10px; color: var(--dim); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 8px; }
+  .sidebar-btn {
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 12px;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.15s;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .sidebar-btn:hover { background: var(--surface2); color: var(--text); border-color: var(--border2); }
+  .sidebar-btn.active { background: var(--surface2); color: var(--text); border-color: var(--border2); }
+  .sidebar-btn .method {
+    font-size: 9px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-weight: 500;
+  }
+  .get { background: #00281a; color: var(--green); }
+  .post { background: #0a1a2e; color: var(--blue); }
+  .put { background: #1a1000; color: var(--amber); }
+  .del { background: #1a0000; color: var(--red); }
+
+  /* ── Info cards ── */
+  .info-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .info-card h3 {
+    font-family: var(--display);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  /* ── DB Justification badge ── */
+  .db-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-bottom: 16px;
+    font-family: var(--mono);
+    font-size: 11px;
+  }
+  .db-badge .db-name { font-weight: 500; }
+
+  /* ── Form ── */
+  .form-group { margin-bottom: 12px; }
+  .form-label { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-bottom: 4px; display: block; }
+  .form-input {
+    width: 100%;
+    padding: 8px 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    transition: border-color 0.15s;
+  }
+  .form-input:focus { outline: none; border-color: var(--blue); }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+  .btn {
+    padding: 9px 18px;
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid;
+    transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn:active { transform: scale(0.98); }
+  .btn-green { color: var(--green); border-color: var(--green); background: var(--green-dim); }
+  .btn-blue  { color: var(--blue);  border-color: var(--blue);  background: var(--blue-dim);  }
+  .btn-amber { color: var(--amber); border-color: var(--amber); background: var(--amber-dim); }
+  .btn-red   { color: var(--red);   border-color: var(--red);   background: var(--red-dim);   }
+  .btn-purple{ color: var(--purple);border-color: var(--purple);background: var(--purple-dim);}
+  .btn:hover { filter: brightness(1.2); }
+
+  /* ── Response terminal ── */
+  .response-area {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 16px;
+  }
+  .response-header {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .response-status {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .s200 { background: var(--green-dim); color: var(--green); }
+  .s201 { background: #001a2a; color: #4db8ff; }
+  .s429 { background: var(--red-dim); color: var(--red); }
+  .s404 { background: var(--amber-dim); color: var(--amber); }
+  .response-body {
+    padding: 16px;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.7;
+    max-height: 380px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+
+  /* JSON syntax highlight */
+  .jk { color: #7bb8ff; }
+  .jv { color: #a8ff78; }
+  .jn { color: #ffb830; }
+  .js { color: #ff8a80; }
+  .jb { color: #c084fc; }
+
+  /* ── Rate limit meter ── */
+  .rate-meter { margin: 16px 0; }
+  .rate-label { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+  .rate-bar { height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+  .rate-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.4s ease, background 0.4s;
+    background: var(--green);
+  }
+  .rate-fill.warn { background: var(--amber); }
+  .rate-fill.danger { background: var(--red); }
+
+  /* ── Product table ── */
+  .product-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .product-table th { font-family: var(--mono); font-size: 10px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.8px; padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+  .product-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .product-table tr:hover td { background: var(--surface2); }
+  .id-chip { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+  .cat-badge { padding: 2px 8px; border-radius: 4px; font-size: 10px; background: var(--surface2); border: 1px solid var(--border2); color: var(--muted); }
+  .stock-ok { color: var(--green); }
+  .stock-low { color: var(--red); }
+
+  /* ── Graph viz ── */
+  #graph-canvas { width: 100%; height: 440px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+
+  .graph-legend { display: flex; gap: 16px; flex-wrap: wrap; margin: 12px 0; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 11px; color: var(--muted); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+  /* ── Stats row ── */
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+  }
+  .stat-label { font-family: var(--mono); font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 4px; }
+  .stat-value { font-family: var(--display); font-size: 22px; font-weight: 700; }
+
+  /* ── Section header ── */
+  .section-title { font-family: var(--display); font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+  .section-sub { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--dim); border-radius: 2px; }
+
+  /* ── Tooltip ── */
+  #tooltip {
+    position: fixed;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-family: var(--mono);
+    font-size: 11px;
+    pointer-events: none;
+    display: none;
+    z-index: 1000;
+    max-width: 220px;
+    line-height: 1.6;
+    color: var(--text);
+  }
+
+  .highlight { color: var(--green); }
+  .loading { color: var(--muted); font-family: var(--mono); font-size: 12px; }
+
+  select.form-input { cursor: pointer; }
+</style>
+</head>
+<body>
+
+<div id="tooltip"></div>
+
+<header>
+  <div class="logo">
+    <span class="logo-dot"></span>
+    InvenDB
+    <span>/ inventory management system</span>
+  </div>
+  <div class="header-status">
+    <div class="status-pill pill-r">Rate Limiter :2100</div>
+    <div class="status-pill pill-g">Inventory API :2101</div>
+    <div class="status-pill pill-b">Graph DB :2102</div>
+  </div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" data-color="red" onclick="switchTab('rate')"><span class="tab-icon">🔴</span> Rate Limiter</div>
+  <div class="tab" data-color="green" onclick="switchTab('inventory')"><span class="tab-icon">🟢</span> Inventory Stack</div>
+  <div class="tab" data-color="blue" onclick="switchTab('graph')"><span class="tab-icon">🔵</span> Graph DB</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     TAB 1: RATE LIMITER (Redis)
+     ══════════════════════════════════════════════════════ -->
+<div class="layout" id="tab-rate">
+  <div class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Endpoints</div>
+      <button class="sidebar-btn active" onclick="rateAction('status')">
+        <span class="method get">GET</span> /status
+      </button>
+      <button class="sidebar-btn" onclick="rateAction('protected')">
+        <span class="method get">GET</span> /api/protected
+      </button>
+      <button class="sidebar-btn" onclick="rateAction('debug')">
+        <span class="method get">GET</span> /debug/keys
+      </button>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Test Rate Limit</div>
+      <button class="sidebar-btn" onclick="burstTest()">
+        <span class="method post">RUN</span> Burst 6 Requests
+      </button>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Config</div>
+      <div style="font-family: var(--mono); font-size: 11px; color: var(--muted); line-height: 2;">
+        Port: <span style="color: var(--red)">2100</span><br>
+        Limit: <span style="color: var(--amber)">5 req/60s</span><br>
+        DB: <span style="color: var(--text)">Redis</span><br>
+        Algo: <span style="color: var(--text)">Fixed Window</span>
+      </div>
+    </div>
+  </div>
+  <div class="main">
+    <div class="section-title">Rate Limiter <span style="color: var(--red)">/ Redis</span></div>
+    <div class="section-sub">5 requests per 60 seconds · Fixed window counter · Port 2100</div>
+
+    <div class="db-badge">
+      <span style="color: var(--red)">●</span>
+      <span class="db-name">Redis</span>
+      <span style="color: var(--dim)">—</span>
+      <span style="color: var(--muted)">Atomic INCR + TTL expiry · Sub-millisecond key lookups · Distributed counter support</span>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">Requests Used</div>
+        <div class="stat-value" id="rl-used" style="color: var(--green)">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Remaining</div>
+        <div class="stat-value" id="rl-remain" style="color: var(--amber)">5</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Limit</div>
+        <div class="stat-value" style="color: var(--muted)">5</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Window</div>
+        <div class="stat-value" style="color: var(--blue); font-size: 16px;">60s</div>
+      </div>
+    </div>
+
+    <div class="rate-meter">
+      <div class="rate-label">
+        <span>Request Usage</span>
+        <span id="rl-pct">0 / 5</span>
+      </div>
+      <div class="rate-bar"><div class="rate-fill" id="rl-bar" style="width: 0%"></div></div>
+    </div>
+
+    <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;">
+      <button class="btn btn-red" onclick="rateAction('protected')">Fire Request ↗</button>
+      <button class="btn btn-amber" onclick="burstTest()">Burst Test (×6)</button>
+      <button class="btn btn-green" onclick="resetRL()">Reset Counter</button>
+    </div>
+
+    <div class="response-area">
+      <div class="response-header">
+        <span>RESPONSE · Redis Key-Value Store</span>
+        <span class="response-status s200" id="rl-status">READY</span>
+      </div>
+      <div class="response-body" id="rl-response">// Hit an endpoint to see the response
+// Watch the rate limit headers in X-RateLimit-*</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     TAB 2: INVENTORY (MongoDB)
+     ══════════════════════════════════════════════════════ -->
+<div class="layout" id="tab-inventory" style="display:none">
+  <div class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Read</div>
+      <button class="sidebar-btn active" onclick="invAction('all')">
+        <span class="method get">GET</span> /view/all
+      </button>
+      <button class="sidebar-btn" onclick="showInvForm('viewById')">
+        <span class="method get">GET</span> /view/:id
+      </button>
+      <button class="sidebar-btn" onclick="invAction('lowstock')">
+        <span class="method get">GET</span> /low-stock
+      </button>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Write</div>
+      <button class="sidebar-btn" onclick="showInvForm('add')">
+        <span class="method post">POST</span> /add
+      </button>
+      <button class="sidebar-btn" onclick="showInvForm('update')">
+        <span class="method put">PUT</span> /update/:id
+      </button>
+      <button class="sidebar-btn" onclick="showInvForm('delete')">
+        <span class="method del">DEL</span> /delete/:id
+      </button>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Config</div>
+      <div style="font-family: var(--mono); font-size: 11px; color: var(--muted); line-height: 2;">
+        Port: <span style="color: var(--green)">2101</span><br>
+        DB: <span style="color: var(--text)">MongoDB</span><br>
+        Schema: <span style="color: var(--text)">Flexible</span><br>
+        Index: <span style="color: var(--text)">_id (ObjectId)</span>
+      </div>
+    </div>
+  </div>
+  <div class="main">
+    <div class="section-title">Inventory Stack <span style="color: var(--green)">/ MongoDB</span></div>
+    <div class="section-sub">Document store · Flexible schema · BSON documents · Port 2101</div>
+
+    <div class="db-badge">
+      <span style="color: var(--green)">●</span>
+      <span class="db-name">MongoDB</span>
+      <span style="color: var(--dim)">—</span>
+      <span style="color: var(--muted)">Schema-flexible BSON · No JOIN overhead · Horizontal sharding · Native JSON</span>
+    </div>
+
+    <div id="inv-form-area"></div>
+
+    <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;">
+      <button class="btn btn-green" onclick="invAction('all')">View All</button>
+      <button class="btn btn-amber" onclick="invAction('lowstock')">Low Stock Alert</button>
+      <button class="btn btn-blue" onclick="showInvForm('add')">+ Add Product</button>
+    </div>
+
+    <div id="inv-table-area"></div>
+
+    <div class="response-area">
+      <div class="response-header">
+        <span>RESPONSE · MongoDB Document Store</span>
+        <span class="response-status s200" id="inv-status">READY</span>
+      </div>
+      <div class="response-body" id="inv-response">// MongoDB document responses appear here
+// Documents are flexible BSON — no fixed schema required</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     TAB 3: GRAPH DB (Neo4j)
+     ══════════════════════════════════════════════════════ -->
+<div class="layout" id="tab-graph" style="display:none">
+  <div class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Queries</div>
+      <button class="sidebar-btn active" onclick="graphAction('overview')">
+        <span class="method get">GET</span> Full Graph
+      </button>
+      <button class="sidebar-btn" onclick="graphAction('manufacturers')">
+        <span class="method get">GET</span> Manufacturers
+      </button>
+      <button class="sidebar-btn" onclick="graphAction('products')">
+        <span class="method get">GET</span> Products + Mfr
+      </button>
+      <button class="sidebar-btn" onclick="graphAction('supplychain')">
+        <span class="method get">GET</span> Supply Chain
+      </button>
+      <button class="sidebar-btn" onclick="graphAction('centrality')">
+        <span class="method get">GET</span> Centrality
+      </button>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Traversal</div>
+      <button class="sidebar-btn" onclick="graphAction('compat')">
+        <span class="method get">GET</span> Compatibility
+      </button>
+      <button class="sidebar-btn" onclick="graphAction('path')">
+        <span class="method get">GET</span> Shortest Path
+      </button>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Config</div>
+      <div style="font-family: var(--mono); font-size: 11px; color: var(--muted); line-height: 2;">
+        Port: <span style="color: var(--blue)">2102</span><br>
+        DB: <span style="color: var(--text)">Neo4j</span><br>
+        Model: <span style="color: var(--text)">Labeled Property</span><br>
+        Query: <span style="color: var(--text)">Cypher</span>
+      </div>
+    </div>
+  </div>
+  <div class="main">
+    <div class="section-title">Product-Manufacturer Graph <span style="color: var(--blue)">/ Neo4j</span></div>
+    <div class="section-sub">Graph database · Cypher queries · Relationship traversal · Port 2102</div>
+
+    <div class="db-badge">
+      <span style="color: var(--blue)">●</span>
+      <span class="db-name">Neo4j</span>
+      <span style="color: var(--dim)">—</span>
+      <span style="color: var(--muted)">Native graph traversal · O(hops) not O(n²) JOINs · Supply chain + compatibility analysis</span>
+    </div>
+
+    <canvas id="graph-canvas"></canvas>
+
+    <div class="graph-legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#4d8aff"></div> Product node</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#00e5a0"></div> Manufacturer node</div>
+      <div class="legend-item"><div class="legend-dot" style="background: none; border: 1px dashed var(--red); width:18px; height:8px; border-radius:2px"></div> MANUFACTURED_BY</div>
+      <div class="legend-item"><div class="legend-dot" style="background: none; border: 1px dashed var(--amber); width:18px; height:8px; border-radius:2px"></div> COMPATIBLE_WITH</div>
+      <div class="legend-item"><div class="legend-dot" style="background: none; border: 1px dashed var(--purple); width:18px; height:8px; border-radius:2px"></div> SUPPLIES</div>
+    </div>
+
+    <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;">
+      <button class="btn btn-blue" onclick="graphAction('overview')">Render Graph</button>
+      <button class="btn btn-green" onclick="graphAction('supplychain')">Supply Chain</button>
+      <button class="btn btn-purple" onclick="graphAction('centrality')">Centrality Analysis</button>
+    </div>
+
+    <div class="response-area">
+      <div class="response-header">
+        <span>RESPONSE · Neo4j Graph DB (Cypher simulation)</span>
+        <span class="response-status s200" id="graph-status">READY</span>
+      </div>
+      <div class="response-body" id="graph-response">// Graph query results appear here
+// MATCH (p:Product)-[:MANUFACTURED_BY]->(m:Manufacturer) RETURN p, m</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── Tab switching ────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    t.classList.toggle('active', ['rate','inventory','graph'][i] === tab);
+  });
+  ['rate','inventory','graph'].forEach(t => {
+    const el = document.getElementById('tab-'+t);
+    el.style.display = t === tab ? 'grid' : 'none';
+  });
+  if (tab === 'graph') { setTimeout(drawGraph, 100); graphAction('overview'); }
+  if (tab === 'inventory') invAction('all');
+}
+
+// ─── MOCK API LAYER (simulates actual services) ───────────────────────────────
+// In production: replace fetch() calls to actual ports 2100/2101/2102
+
+const mockRedis = { ip: '127.0.0.1', count: 0, expiry: null, limit: 5, window: 60 };
+
+function redisIncr() {
+  const now = Date.now();
+  if (!mockRedis.expiry || now > mockRedis.expiry) {
+    mockRedis.count = 0;
+    mockRedis.expiry = now + 60000;
+  }
+  mockRedis.count++;
+  return { count: mockRedis.count, ttl: mockRedis.expiry - now };
+}
+
+function resetRL() {
+  mockRedis.count = 0;
+  mockRedis.expiry = null;
+  updateRLMeter(0, 5);
+  showResponse('rl', 200, { message: 'Rate limit counter reset', redis_key: `rate_limit:127.0.0.1`, action: 'DEL' });
+}
+
+function rateAction(action) {
+  const { count, ttl } = redisIncr();
+  const remaining = Math.max(0, 5 - count);
+  const exceeded = count > 5;
+  updateRLMeter(count, 5);
+  const resetAt = new Date(Date.now() + ttl).toISOString();
+
+  if (exceeded) {
+    showResponse('rl', 429, {
+      error: 'Rate Limit Exceeded',
+      message: 'Maximum 5 requests per 60 seconds',
+      retryAfter: Math.ceil(ttl / 1000),
+      resetAt,
+      requestCount: count,
+      limit: 5,
+      redis: { key: 'rate_limit:127.0.0.1', operation: 'INCR', ttl: Math.ceil(ttl/1000)+'s' }
+    });
+    return;
+  }
+
+  const responses = {
+    status: { service: 'Rate Limiter', database: 'Redis', port: 2100, config: { limit: 5, windowSeconds: 60, algorithm: 'Fixed Window Counter' }, current: { requestsUsed: count, requestsRemaining: remaining, windowResetAt: resetAt }, redis: { key: 'rate_limit:127.0.0.1', operation: 'INCR → GET TTL', currentValue: count } },
+    protected: { message: 'Access granted!', timestamp: new Date().toISOString(), rateLimitHeaders: { 'X-RateLimit-Limit': 5, 'X-RateLimit-Remaining': remaining, 'X-RateLimit-Reset': resetAt } },
+    debug: { activeKeys: 1, keys: [{ key: 'rate_limit:127.0.0.1', count, ttl: Math.ceil(ttl/1000)+'s' }] }
+  };
+  showResponse('rl', 200, responses[action] || responses.status);
+}
+
+async function burstTest() {
+  showResponse('rl', 200, { message: 'Firing 6 requests...' });
+  for (let i = 1; i <= 6; i++) {
+    await new Promise(r => setTimeout(r, 300));
+    rateAction('protected');
+  }
+}
+
+function updateRLMeter(used, limit) {
+  const pct = Math.min(100, (used / limit) * 100);
+  const bar = document.getElementById('rl-bar');
+  bar.style.width = pct + '%';
+  bar.className = 'rate-fill' + (pct >= 100 ? ' danger' : pct >= 60 ? ' warn' : '');
+  document.getElementById('rl-used').textContent = used;
+  document.getElementById('rl-remain').textContent = Math.max(0, limit - used);
+  document.getElementById('rl-pct').textContent = used + ' / ' + limit;
+}
+
+// ─── MongoDB simulation ───────────────────────────────────────────────────────
+let mongoData = [
+  { _id: 'a1b2c3d4e5f6', name: 'RTX 4090 GPU', category: 'Electronics', quantity: 15, price: 1599.99, sku: 'GPU-4090', manufacturer: 'mfr-nvidia', location: 'Warehouse-A', minStock: 5, createdAt: new Date().toISOString() },
+  { _id: 'b2c3d4e5f6a1', name: 'DDR5 32GB RAM', category: 'Electronics', quantity: 50, price: 189.99, sku: 'RAM-DDR5-32', manufacturer: 'mfr-corsair', location: 'Warehouse-A', minStock: 10, createdAt: new Date().toISOString() },
+  { _id: 'c3d4e5f6a1b2', name: 'Samsung 4TB SSD', category: 'Storage', quantity: 30, price: 299.99, sku: 'SSD-4TB-SAM', manufacturer: 'mfr-samsung', location: 'Warehouse-B', minStock: 8, createdAt: new Date().toISOString() },
+  { _id: 'd4e5f6a1b2c3', name: 'Core i9-14900K', category: 'Processors', quantity: 25, price: 549.99, sku: 'CPU-I9-14900K', manufacturer: 'mfr-intel', location: 'Warehouse-A', minStock: 5, createdAt: new Date().toISOString() },
+  { _id: 'e5f6a1b2c3d4', name: 'ROG Motherboard', category: 'Motherboards', quantity: 4, price: 449.99, sku: 'MB-ASUS-ROG', manufacturer: 'mfr-asus', location: 'Warehouse-C', minStock: 5, createdAt: new Date().toISOString() },
+];
+
+function genId() { return [...Array(24)].map(() => Math.floor(Math.random()*16).toString(16)).join(''); }
+
+function invAction(action) {
+  document.getElementById('inv-form-area').innerHTML = '';
+  if (action === 'all') {
+    const total = mongoData.reduce((s,p) => s+p.price*p.quantity, 0);
+    renderProductTable(mongoData);
+    showResponse('inv', 200, { success: true, count: mongoData.length, totalInventoryValue: '$'+total.toFixed(2), products: mongoData });
+  } else if (action === 'lowstock') {
+    const low = mongoData.filter(p => p.quantity < p.minStock);
+    renderProductTable(low, true);
+    showResponse('inv', 200, { success: true, count: low.length, lowStockItems: low });
+  }
+}
+
+function showInvForm(type) {
+  const forms = {
+    add: `<div class="info-card">
+      <h3>Add Product — POST /inventory/add</h3>
+      <div class="form-grid">
+        <div class="form-group"><label class="form-label">Product Name *</label><input class="form-input" id="f-name" placeholder="RTX 5090"></div>
+        <div class="form-group"><label class="form-label">Category</label><input class="form-input" id="f-cat" placeholder="Electronics"></div>
+        <div class="form-group"><label class="form-label">Quantity *</label><input class="form-input" id="f-qty" type="number" value="10"></div>
+        <div class="form-group"><label class="form-label">Price *</label><input class="form-input" id="f-price" type="number" value="999.99"></div>
+        <div class="form-group"><label class="form-label">SKU</label><input class="form-input" id="f-sku" placeholder="AUTO"></div>
+        <div class="form-group"><label class="form-label">Location</label><input class="form-input" id="f-loc" value="Warehouse-A"></div>
+      </div>
+      <button class="btn btn-green" onclick="doAdd()">INSERT Document ↗</button>
+    </div>`,
+    viewById: `<div class="info-card">
+      <h3>View by ID — GET /inventory/view/:id</h3>
+      <div class="form-group"><label class="form-label">Document ID (_id)</label>
+      <select class="form-input" id="f-viewid">${mongoData.map(p=>`<option value="${p._id}">${p._id} — ${p.name}</option>`).join('')}</select></div>
+      <button class="btn btn-blue" onclick="doViewById()">FIND Document ↗</button>
+    </div>`,
+    update: `<div class="info-card">
+      <h3>Update Product — PUT /inventory/update/:id</h3>
+      <div class="form-group"><label class="form-label">Select Product</label>
+      <select class="form-input" id="f-upid">${mongoData.map(p=>`<option value="${p._id}">${p.name}</option>`).join('')}</select></div>
+      <div class="form-grid">
+        <div class="form-group"><label class="form-label">New Quantity</label><input class="form-input" id="f-uqty" type="number" placeholder="leave blank to skip"></div>
+        <div class="form-group"><label class="form-label">New Price</label><input class="form-input" id="f-uprice" type="number" placeholder="leave blank to skip"></div>
+      </div>
+      <button class="btn btn-amber" onclick="doUpdate()">UPDATE Document ↗</button>
+    </div>`,
+    delete: `<div class="info-card">
+      <h3>Delete Product — DELETE /inventory/delete/:id</h3>
+      <div class="form-group"><label class="form-label">Select Product to Delete</label>
+      <select class="form-input" id="f-delid">${mongoData.map(p=>`<option value="${p._id}">${p.name} (${p._id})</option>`).join('')}</select></div>
+      <button class="btn btn-red" onclick="doDelete()">DELETE Document ↗</button>
+    </div>`,
+  };
+  document.getElementById('inv-form-area').innerHTML = forms[type] || '';
+  document.getElementById('inv-table-area').innerHTML = '';
+}
+
+function doAdd() {
+  const name = document.getElementById('f-name').value;
+  const qty = parseInt(document.getElementById('f-qty').value);
+  const price = parseFloat(document.getElementById('f-price').value);
+  if (!name || isNaN(qty) || isNaN(price)) { alert('Name, quantity and price required'); return; }
+  const doc = { _id: genId(), name, category: document.getElementById('f-cat').value || 'Uncategorized', quantity: qty, price, sku: document.getElementById('f-sku').value || 'SKU-'+Date.now(), location: document.getElementById('f-loc').value, minStock: 5, createdAt: new Date().toISOString() };
+  mongoData.push(doc);
+  showResponse('inv', 201, { success: true, message: 'Product added to inventory', insertedId: doc._id, product: doc, mongodb: { operation: 'insertOne', collection: 'inventory', acknowledged: true } });
+}
+
+function doViewById() {
+  const id = document.getElementById('f-viewid').value;
+  const doc = mongoData.find(p => p._id === id);
+  showResponse('inv', doc ? 200 : 404, doc ? { success: true, product: doc, mongodb: { operation: 'findOne', filter: { _id: id } } } : { error: 'Document not found' });
+}
+
+function doUpdate() {
+  const id = document.getElementById('f-upid').value;
+  const idx = mongoData.findIndex(p => p._id === id);
+  if (idx === -1) return;
+  const qty = document.getElementById('f-uqty').value;
+  const price = document.getElementById('f-uprice').value;
+  if (qty) mongoData[idx].quantity = parseInt(qty);
+  if (price) mongoData[idx].price = parseFloat(price);
+  mongoData[idx].updatedAt = new Date().toISOString();
+  showResponse('inv', 200, { success: true, message: 'Document updated', product: mongoData[idx], mongodb: { operation: 'updateOne', matchedCount: 1, modifiedCount: 1 } });
+  refreshDropdowns();
+}
+
+function doDelete() {
+  const id = document.getElementById('f-delid').value;
+  const doc = mongoData.find(p => p._id === id);
+  if (!doc) return;
+  mongoData = mongoData.filter(p => p._id !== id);
+  showResponse('inv', 200, { success: true, message: 'Document deleted', deleted: doc, mongodb: { operation: 'deleteOne', deletedCount: 1 } });
+  document.getElementById('inv-form-area').innerHTML = '';
+}
+
+function refreshDropdowns() {
+  ['f-upid','f-delid','f-viewid'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = mongoData.map(p=>`<option value="${p._id}">${p.name}</option>`).join('');
+  });
+}
+
+function renderProductTable(products, highlight=false) {
+  if (!products.length) {
+    document.getElementById('inv-table-area').innerHTML = '<div class="loading" style="padding:20px">No products found</div>';
+    return;
+  }
+  const rows = products.map(p => `<tr>
+    <td><span class="id-chip">${p._id.slice(0,8)}…</span></td>
+    <td>${p.name}</td>
+    <td><span class="cat-badge">${p.category}</span></td>
+    <td class="${p.quantity < (p.minStock||5) ? 'stock-low' : 'stock-ok'}">${p.quantity}</td>
+    <td>$${p.price.toFixed(2)}</td>
+    <td style="color:var(--muted)">${p.location||'—'}</td>
+  </tr>`).join('');
+  document.getElementById('inv-table-area').innerHTML = `<div class="info-card" style="padding:0;overflow:hidden;margin-bottom:16px">
+    <table class="product-table">
+      <thead><tr><th>_id</th><th>Name</th><th>Category</th><th>Qty</th><th>Price</th><th>Location</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </div>`;
+}
+
+// ─── Neo4j Graph Simulation ───────────────────────────────────────────────────
+const graphData = {
+  nodes: [
+    { id: 'gpu', label: 'Product', name: 'RTX 4090', type: 'product', x: 220, y: 120 },
+    { id: 'cpu', label: 'Product', name: 'Core i9', type: 'product', x: 380, y: 80 },
+    { id: 'ram', label: 'Product', name: 'DDR5 RAM', type: 'product', x: 160, y: 240 },
+    { id: 'ssd', label: 'Product', name: '4TB SSD', type: 'product', x: 440, y: 200 },
+    { id: 'mb',  label: 'Product', name: 'ROG MoBo', type: 'product', x: 310, y: 320 },
+    { id: 'nvidia',  label: 'Manufacturer', name: 'NVIDIA', type: 'mfr', x: 80,  y: 50 },
+    { id: 'intel',   label: 'Manufacturer', name: 'Intel', type: 'mfr', x: 520, y: 50 },
+    { id: 'corsair', label: 'Manufacturer', name: 'Corsair', type: 'mfr', x: 50, y: 320 },
+    { id: 'samsung', label: 'Manufacturer', name: 'Samsung', type: 'mfr', x: 560, y: 320 },
+    { id: 'asus',    label: 'Manufacturer', name: 'ASUS', type: 'mfr', x: 320, y: 420 },
+    { id: 'tsmc',    label: 'Manufacturer', name: 'TSMC', type: 'mfr', x: 300, y: -10 },
+  ],
+  edges: [
+    { from: 'gpu', to: 'nvidia', type: 'MANUFACTURED_BY', color: '#ff4560' },
+    { from: 'cpu', to: 'intel',  type: 'MANUFACTURED_BY', color: '#ff4560' },
+    { from: 'ram', to: 'corsair',type: 'MANUFACTURED_BY', color: '#ff4560' },
+    { from: 'ssd', to: 'samsung',type: 'MANUFACTURED_BY', color: '#ff4560' },
+    { from: 'mb',  to: 'asus',   type: 'MANUFACTURED_BY', color: '#ff4560' },
+    { from: 'tsmc', to: 'nvidia', type: 'SUPPLIES', color: '#9b6dff' },
+    { from: 'tsmc', to: 'intel',  type: 'SUPPLIES', color: '#9b6dff' },
+    { from: 'samsung', to: 'corsair', type: 'SUPPLIES', color: '#9b6dff' },
+    { from: 'gpu', to: 'mb', type: 'COMPATIBLE_WITH', color: '#ffb830' },
+    { from: 'cpu', to: 'mb', type: 'COMPATIBLE_WITH', color: '#ffb830' },
+    { from: 'ram', to: 'mb', type: 'COMPATIBLE_WITH', color: '#ffb830' },
+    { from: 'ssd', to: 'mb', type: 'COMPATIBLE_WITH', color: '#ffb830' },
+    { from: 'cpu', to: 'ram',type: 'COMPATIBLE_WITH', color: '#ffb830' },
+  ]
+};
+
+function drawGraph() {
+  const canvas = document.getElementById('graph-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.offsetWidth; const H = canvas.offsetHeight;
+  canvas.width = W; canvas.height = H;
+
+  const scaleX = W / 640, scaleY = H / 480;
+  const offsetY = 40;
+
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#111318';
+  ctx.fillRect(0, 0, W, H);
+
+  const getPos = n => ({ x: n.x * scaleX + 30, y: n.y * scaleY + offsetY });
+
+  // Draw edges
+  graphData.edges.forEach(e => {
+    const from = graphData.nodes.find(n => n.id === e.from);
+    const to   = graphData.nodes.find(n => n.id === e.to);
+    if (!from || !to) return;
+    const fp = getPos(from), tp = getPos(to);
+    ctx.beginPath();
+    ctx.setLineDash(e.type === 'COMPATIBLE_WITH' ? [5,4] : e.type === 'SUPPLIES' ? [3,3] : []);
+    ctx.moveTo(fp.x, fp.y);
+    const mx = (fp.x+tp.x)/2 + (Math.random()-0.5)*20;
+    const my = (fp.y+tp.y)/2 + (Math.random()-0.5)*20;
+    ctx.quadraticCurveTo(mx, my, tp.x, tp.y);
+    ctx.strokeStyle = e.color + '88';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // Arrow
+    const dx = tp.x - mx, dy = tp.y - my;
+    const angle = Math.atan2(dy, dx);
+    ctx.beginPath();
+    ctx.moveTo(tp.x - 12*Math.cos(angle-0.35), tp.y - 12*Math.sin(angle-0.35));
+    ctx.lineTo(tp.x, tp.y);
+    ctx.lineTo(tp.x - 12*Math.cos(angle+0.35), tp.y - 12*Math.sin(angle+0.35));
+    ctx.strokeStyle = e.color + 'cc';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  });
+
+  // Draw nodes
+  graphData.nodes.forEach(n => {
+    const p = getPos(n);
+    const r = n.type === 'product' ? 28 : 24;
+    const color = n.type === 'product' ? '#4d8aff' : '#00e5a0';
+    const glow = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
+    glow.addColorStop(0, color + '40');
+    glow.addColorStop(1, color + '00');
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, r+8, 0, Math.PI*2);
+    ctx.fillStyle = glow;
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, r, 0, Math.PI*2);
+    ctx.fillStyle = n.type === 'product' ? '#050f26' : '#001a12';
+    ctx.fill();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.fillStyle = color;
+    ctx.font = `500 10px 'IBM Plex Mono'`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(n.name, p.x, p.y);
+    ctx.fillStyle = color + '88';
+    ctx.font = `9px 'IBM Plex Mono'`;
+    ctx.fillText(n.label, p.x, p.y + 13);
+  });
+}
+
+function graphAction(action) {
+  const mockResponses = {
+    overview: { cypher: 'MATCH (n) OPTIONAL MATCH (n)-[r]->(m) RETURN n, r, m', result: { nodes: 11, relationships: 13, labels: ['Product', 'Manufacturer'], relationshipTypes: ['MANUFACTURED_BY', 'COMPATIBLE_WITH', 'SUPPLIES'] }, graphStats: { totalNodes: 11, totalEdges: 13, nodesByLabel: { Product: 5, Manufacturer: 6 }, edgesByType: { MANUFACTURED_BY: 5, COMPATIBLE_WITH: 5, SUPPLIES: 3 } } },
+    manufacturers: { cypher: 'MATCH (m:Manufacturer) OPTIONAL MATCH (p:Product)-[:MANUFACTURED_BY]->(m) RETURN m, count(p) as products', manufacturers: [ { name: 'NVIDIA Corporation', country: 'USA', productsManufactured: 1, supplies: [] }, { name: 'Intel Corporation', country: 'USA', productsManufactured: 1, supplies: [] }, { name: 'Samsung Electronics', country: 'Korea', productsManufactured: 1, supplies: ['Corsair Gaming'] }, { name: 'TSMC', country: 'Taiwan', productsManufactured: 0, supplies: ['NVIDIA Corporation', 'Intel Corporation'] } ] },
+    products: { cypher: 'MATCH (p:Product)-[:MANUFACTURED_BY]->(m:Manufacturer) RETURN p, m', products: [ { name: 'RTX 4090 GPU', manufacturer: 'NVIDIA Corp', compatibleWith: ['ROG Motherboard'] }, { name: 'Core i9-14900K', manufacturer: 'Intel', compatibleWith: ['ROG Motherboard', 'DDR5 RAM'] }, { name: 'DDR5 32GB RAM', manufacturer: 'Corsair', compatibleWith: ['ROG Motherboard'] } ] },
+    supplychain: { cypher: 'MATCH path=(s:Manufacturer)-[:SUPPLIES*1..3]->(m:Manufacturer) RETURN path', supplyChain: [ { supplier: 'TSMC', suppliesTo: [{ manufacturer: 'NVIDIA Corporation', component: 'Ada Lovelace chips', node: '4nm' }, { manufacturer: 'Intel Corporation', component: 'Meteor Lake tiles', node: '3nm' }] }, { supplier: 'Samsung Electronics', suppliesTo: [{ manufacturer: 'Corsair Gaming', component: 'DDR5 DRAM dies', node: '10nm' }] } ] },
+    centrality: { cypher: 'MATCH (n) RETURN n, size([(n)-[]-()] ) AS degree ORDER BY degree DESC', description: 'Node degree centrality — hub nodes drive the supply network', centrality: [ { name: 'ROG Motherboard', labels: ['Product'], degree: 4, role: 'Hub' }, { name: 'TSMC', labels: ['Manufacturer'], degree: 2, role: 'Connector' }, { name: 'Samsung Electronics', labels: ['Manufacturer'], degree: 2, role: 'Connector' }, { name: 'RTX 4090 GPU', labels: ['Product'], degree: 2, role: 'Connector' } ] },
+    compat: { cypher: 'MATCH (a:Product {name:"RTX 4090"})-[:COMPATIBLE_WITH]-(b:Product) RETURN b', product: 'RTX 4090 GPU', compatibleProducts: [{ name: 'ROG Motherboard', hopDistance: 1, interface: 'PCIe 5.0 x16' }] },
+    path: { cypher: 'MATCH path = shortestPath((tsmc)-[*]-(gpu)) RETURN path', from: 'TSMC', to: 'RTX 4090 GPU', hops: 3, path: ['TSMC', '→ SUPPLIES →', 'NVIDIA Corp', '→ MANUFACTURED_BY ←', 'RTX 4090 GPU'] }
+  };
+  showResponse('graph', 200, mockResponses[action] || {});
+  if (action === 'overview') drawGraph();
+}
+
+// ─── Response renderer ────────────────────────────────────────────────────────
+function syntaxHighlight(json) {
+  return json
+    .replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function(m) {
+      if (/^"/.test(m)) {
+        if (/:$/.test(m)) return `<span class="jk">${m}</span>`;
+        return `<span class="jv">${m}</span>`;
+      }
+      if (/true|false/.test(m)) return `<span class="jb">${m}</span>`;
+      if (/null/.test(m)) return `<span class="jb">${m}</span>`;
+      return `<span class="jn">${m}</span>`;
+    });
+}
+
+function showResponse(prefix, status, data) {
+  const el = document.getElementById(prefix+'-response');
+  const statusEl = document.getElementById(prefix+'-status');
+  const json = JSON.stringify(data, null, 2);
+  el.innerHTML = syntaxHighlight(json);
+  const cls = { 200: 's200', 201: 's201', 429: 's429', 404: 's404' };
+  statusEl.className = 'response-status ' + (cls[status] || 's200');
+  statusEl.textContent = status + ' ' + (status === 200 ? 'OK' : status === 201 ? 'CREATED' : status === 429 ? 'TOO MANY REQUESTS' : 'NOT FOUND');
+}
+
+// ─── Init ──────────────────────────────────────────────────────────────────────
+invAction('all');
+</script>
+
+</body>
+</html>
